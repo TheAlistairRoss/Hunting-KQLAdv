@@ -5,127 +5,12 @@ param dataCollectionEndpointName string
 param dataCollectionRuleName string
 param managedIdentityName string
 
-var monitoringMetricsPublisherRoleId = resourceId('microsoft.authorization/roleDefinitions','3913510d-42f4-4e42-8a64-420c390055eb')
+var monitoringMetricsPublisherRoleId = resourceId('microsoft.authorization/roleDefinitions', '3913510d-42f4-4e42-8a64-420c390055eb')
 var roleAssignmentName = guid(managedIdentity.name, monitoringMetricsPublisherRoleId, resourceGroup().id)
 
-var windowsEventTableName = 'WindowsEvent_CL'
-var windowsEventTableSchema = [
-  {
-    name: 'TimeGenerated'
-    type: 'datetime'
-  }
-  {
-    name: 'OperationName'
-    type: 'string'
-  }
-  {
-    name: 'Category'
-    type: 'string'
-  }
-  {
-    name: 'ResultType'
-    type: 'string'
-  }
-  {
-    name: 'ResultDescription'
-    type: 'string'
-  }
-  {
-    name: 'CorrelationId'
-    type: 'string'
-  }
-  {
-    name: 'Identity'
-    type: 'string'
-  }
-  {
-    name: 'Level'
-    type: 'string'
-  }
-  {
-    name: 'Location'
-    type: 'string'
-  }
-  {
-    name: 'AppDisplayName'
-    type: 'string'
-  }
-  {
-    name: 'AppId'
-    type: 'string'
-  }
-  {
-    name: 'ClientAppUsed'
-    type: 'string'
-  }
-  {
-    name: 'ConditionalAccessStatus'
-    type: 'string'
-  }
-  {
-    name: 'DeviceDetail'
-    type: 'dynamic'
-  }
-  {
-    name: 'IPAddress'
-    type: 'string'
-  }
-  {
-    name: 'LocationDetails'
-    type: 'dynamic'
-  }
-  {
-    name: 'ResourceDisplayName'
-    type: 'string'
-  }
-  {
-    name: 'Status'
-    type: 'dynamic'
-  }
-  {
-    name: 'UserDisplayName'
-    type: 'string'
-  }
-  {
-    name: 'UserPrincipalName'
-    type: 'string'
-  }
-  {
-    name: 'UserType'
-    type: 'string'
-  }
-]
-
-var windowsEventFunctionProperties = {
-  category: 'SentAdvHunting'
-  displayName: 'fWindowsEvent'
-  version: 2
-  functionAlias: 'fWindowsEvent'
-  query: 'WindowsEvent_Cl'
-}
 
 resource logAnalyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2022-10-01' existing = {
   name: workspaceName
-}
-
-resource windowsEventTable 'Microsoft.OperationalInsights/workspaces/tables@2022-10-01' = {
-  parent: logAnalyticsWorkspace
-  name: windowsEventTableName
-  properties: {
-    schema: {
-      name: windowsEventTableName
-      columns: windowsEventTableSchema
-    }
-  }
-}
-
-resource windowEventFunction 'Microsoft.OperationalInsights/workspaces/savedSearches@2020-08-01' = {
-  parent: logAnalyticsWorkspace
-  dependsOn: [
-    windowsEventTable
-  ]
-  name: windowsEventFunctionProperties.functionAlias
-  properties: windowsEventFunctionProperties
 }
 
 resource dataCollectionEndpoint 'Microsoft.Insights/dataCollectionEndpoints@2021-09-01-preview' = {
@@ -140,22 +25,19 @@ resource dataCollectionEndpoint 'Microsoft.Insights/dataCollectionEndpoints@2021
 
 resource dataCollectionRule 'Microsoft.Insights/dataCollectionRules@2021-09-01-preview' = {
   name: dataCollectionRuleName
-  dependsOn: [
-    windowsEventTable
-  ]
   location: location
   properties: {
     dataCollectionEndpointId: dataCollectionEndpoint.id
     dataFlows: [
       {
         streams: [
-          'Custom-${windowsEventTableName}'
+          'Custom-WindowsEvent'
         ]
         destinations: [
-          'workspaceStream'
+          workspaceName
         ]
-        transformKql: 'source'
-        outputStream: 'Custom-${windowsEventTableName}'
+        transformKql: 'source | extend EventData = parse_json(RawEventData) | extend Channel=tostring(EventData.Channel),Computer=tostring(EventData.Hostname),EventID=toint(EventData.EventID),EventLevel=toint(EventData.Level),Provider=tostring(EventData.SourceName),Task=toint(EventData.Task),Type=\'WindowsEvent\'| project TimeGenerated,Channel,Computer,EventData,EventID,EventLevel,Provider,Task,Type'
+        outputStream: 'Microsoft-WindowsEvent'
       }
     ]
     description: 'string'
@@ -163,15 +45,25 @@ resource dataCollectionRule 'Microsoft.Insights/dataCollectionRules@2021-09-01-p
       logAnalytics: [
         {
           workspaceResourceId: logAnalyticsWorkspace.id
-          name: 'workspaceStream'
+          name: workspaceName
         }
       ]
     }
 
     streamDeclarations: {
-      'Custom-${windowsEventTableName}': {
-        columns: windowsEventTableSchema
+      'Custom-WindowsEvent': {
+        columns: [
+          {
+            name: 'TimeGenerated'
+            type: 'datetime'
+          }
+          {
+            name: 'RawEventData'
+            type: 'string'
+          }
+        ]
       }
+
     }
   }
 }
@@ -190,3 +82,7 @@ resource roleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-prev
     principalType: 'ServicePrincipal'
   }
 }
+
+output dataCollectionRuleImmutableId string = dataCollectionRule.properties.immutableId
+
+output dataCollectionEndpointURI string = dataCollectionEndpoint.properties.logsIngestion.endpoint
