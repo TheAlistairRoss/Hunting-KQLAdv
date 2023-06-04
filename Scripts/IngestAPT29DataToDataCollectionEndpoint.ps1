@@ -323,8 +323,17 @@ else {
     Write-Host "App Secret Found as Parameter"
 }
 
-$applicationSecret = $appSecret | ConvertFrom-SecureString -AsPlainText 
-Write-Host "App Secret = $applicationSecret"
+try {
+    if ($appSecret.GetType().Name -eq "SecureString"){
+        $applicationSecret = $appSecret | ConvertFrom-SecureString -AsPlainText}
+    else{
+        $applicationSecret = $appSecret
+    }
+}
+catch {
+    Write-Host "Failed to convert App Secret"
+    exit
+}
 
 
 

@@ -7,7 +7,6 @@ param forceUpdateTag string = utcNow()
 
 param applicationId string 
 param tenantId string 
-@secure()
 param applicationSecret string
 
 var scriptName = 'deployAPT29Logs'
@@ -29,7 +28,7 @@ resource dataIngestionScript 'Microsoft.Resources/deploymentScripts@2020-10-01' 
     environmentVariables:[
       {
         name: 'appSecret'
-        secureValue: applicationSecret
+        value: applicationSecret
       }
     ]
   }

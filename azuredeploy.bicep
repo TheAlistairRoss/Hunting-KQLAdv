@@ -8,7 +8,6 @@ param dataCollectionRuleName string = 'sent-adv-hunting-dcr'
 
 param applicationId string 
 param tenantId string 
-@secure()
 param applicationSecret string
 @description('This is the Object id of the Entperpise Application associated with the App Registration')
 param applicationEnterpriseObjectId string
