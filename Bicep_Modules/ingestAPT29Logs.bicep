@@ -10,7 +10,7 @@ param tenantId string
 param applicationSecret string
 
 var scriptName = 'deployAPT29Logs'
-var scriptArguements = '-appId "${applicationId}" -TenantId "${tenantId}" -DataSetUri "${dataSetUri}" -DcrImmutableId "${dataCollectionRuleImmutableId} -DceURI "${dataCollectionEndpointURI}'
+var scriptArguements = '-appSecret "${applicationSecret}" -appId "${applicationId}" -TenantId "${tenantId}" -DataSetUri "${dataSetUri}" -DcrImmutableId "${dataCollectionRuleImmutableId} -DceURI "${dataCollectionEndpointURI}'
 
 
 resource dataIngestionScript 'Microsoft.Resources/deploymentScripts@2020-10-01' = {
@@ -25,12 +25,6 @@ resource dataIngestionScript 'Microsoft.Resources/deploymentScripts@2020-10-01' 
     retentionInterval: 'P1D'
     timeout: 'PT6H'
     forceUpdateTag: forceUpdateTag
-    environmentVariables:[
-      {
-        name: 'appSecret'
-        value: applicationSecret
-      }
-    ]
   }
 
 }

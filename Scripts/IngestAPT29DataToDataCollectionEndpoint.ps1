@@ -2,7 +2,8 @@ param (
     [Parameter(Mandatory = $true)]
     [string]$appId,
 
-    [securestring]$appSecret,
+    [Parameter(Mandatory = $true)]
+    [string]$appSecret,
 
     [Parameter(Mandatory = $true)]
     [string]$TenantId,
@@ -309,31 +310,7 @@ Load-Module Az.Accounts
 Add-Type -AssemblyName System.Web
 
 
-if (!$appSecret) {
-    try {
-        $appSecret = $env:appSecret
-        Write-Host "Getting App Secret from Environment Variables"
-    }
-    catch {
-        Write-Host "Failed to get app secret"
-        exit
-    }
-}
-else {
-    Write-Host "App Secret Found as Parameter"
-}
-
-try {
-    if ($appSecret.GetType().Name -eq "SecureString"){
-        $applicationSecret = $appSecret | ConvertFrom-SecureString -AsPlainText}
-    else{
-        $applicationSecret = $appSecret
-    }
-}
-catch {
-    Write-Host "Failed to convert App Secret"
-    exit
-}
+Write-host "$appSecret starts with '$($appSecret.Substring(0,4))...'"
 
 
 
