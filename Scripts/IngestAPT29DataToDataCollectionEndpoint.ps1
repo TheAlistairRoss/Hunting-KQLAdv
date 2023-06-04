@@ -267,52 +267,12 @@ function Send-AzMonitorCustomLogs {
 }
 
 
-function Load-Module ($m) {
-
-    # If module is imported - do nothing
-    if (Get-Module | Where-Object { $_.Name -eq $m }) {
-        write-host "[+] Module $m is already imported. " -NoNewline
-        write-host "Completed" -ForegroundColor White -BackgroundColor Green
-    }
-    else {
-
-        # If module is not imported, but available on disk then import
-        if (Get-Module -ListAvailable | Where-Object { $_.Name -eq $m }) {
-            write-host "[+] $m is available, loading... " -NoNewline
-            Import-Module $m 
-            write-host "Completed" -ForegroundColor White -BackgroundColor Green
-        }
-        else {
-
-            # If module is not imported, not available on disk, but is in online gallery then install and import
-            if (Find-Module -Name $m | Where-Object { $_.Name -eq $m }) {
-                write-host "[+] $m is not available, installing... " -NoNewline
-                Install-Module -Name $m -Force -Verbose -Scope CurrentUser
-                write-host "Completed" -ForegroundColor White -BackgroundColor Green
-                write-host "[+] $m is now available, loading... " -NoNewline
-                Import-Module $m 
-                write-host "Completed" -ForegroundColor White -BackgroundColor Green
-            }
-            else {
-
-                # If the module is not imported, not available and not in the online gallery then abort
-                write-host "[!!!] Module $m not imported, not available and not in an online gallery, exiting." -BackgroundColor Red -ForegroundColor White
-                EXIT 1
-            }
-        }
-    }
-}
 
 #Push-Location (Split-Path $MyInvocation.MyCommand.Path)
 
-Load-Module Az.Accounts
-
 Add-Type -AssemblyName System.Web
 
-
-Write-host "$appSecret starts with '$($appSecret.Substring(0,4))...'"
-
-
+Write-host "Application Secret starts with '$($appSecret.Substring(0,4))...'"
 
 $StreamName = 'Custom-WindowsEvent_CL'
 $original_file = '.\orig\apt29_evals_day1_manual_2020-05-01225525.json'
@@ -323,7 +283,8 @@ $DataSetFileName = $DataSetUri.Split("/")[-1]
 
 try {
     Write-Host "[+] Downloading DataSet"
-    Invoke-WebRequest -Uri $DataSetUri -OutFile $DataSetFileName 
+    # Invoke-WebRequest -Uri $DataSetUri -OutFile $DataSetFileName 
+    Invoke-RestMethod -Method Get -Uri $DataSetUri -OutFile $DataSetFileName 
     $DataSetDirectory = "orig"
     
     Write-Host "[+] Extracting Zip File"
@@ -360,7 +321,7 @@ else {
 $SendAzMonitorCustomLogsParams = @{
     LogPath        = $destination_file
     appId          = $appId
-    applicationSecret      = $applicationSecret 
+    applicationSecret = $appSecret 
     tenantId       = $TenantId
     DcrImmutableId = $DcrImmutableId 
     DceURI         = $DceURI 

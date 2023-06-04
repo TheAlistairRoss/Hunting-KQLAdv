@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.17.1.54307",
-      "templateHash": "10788463432867215504"
+      "templateHash": "6757419128615382021"
     }
   },
   "parameters": {
@@ -29,29 +29,12 @@
       "type": "string",
       "defaultValue": "sent-adv-hunting-dcr"
     },
-    "applicationId": {
-      "type": "string"
-    },
-    "tenantId": {
-      "type": "string"
-    },
-    "applicationSecret": {
-      "type": "securestring"
-    },
     "applicationEnterpriseObjectId": {
       "type": "string",
       "metadata": {
         "description": "This is the Object id of the Entperpise Application associated with the App Registration"
       }
-    },
-    "ingestAPT29Logs": {
-      "type": "bool",
-      "defaultValue": true
     }
-  },
-  "variables": {
-    "dataSetUri": "https://raw.githubusercontent.com/OTRF/detection-hackathon-apt29/master/datasets/day1/apt29_evals_day1_manual.zip",
-    "dataSetIngestionScriptUri": "https://raw.githubusercontent.com/TheAlistairRoss/Hunting-KQLAdv/main/Scripts/IngestAPT29DataToDataCollectionEndpoint.ps1"
   },
   "resources": [
     {
@@ -367,117 +350,16 @@
       "dependsOn": [
         "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'dataCollectionDeployment')]"
       ]
-    },
-    {
-      "condition": "[equals(parameters('ingestAPT29Logs'), true())]",
-      "type": "Microsoft.Resources/deployments",
-      "apiVersion": "2022-09-01",
-      "name": "ingestAPT29Logs",
-      "resourceGroup": "[parameters('resourceGroupName')]",
-      "properties": {
-        "expressionEvaluationOptions": {
-          "scope": "inner"
-        },
-        "mode": "Incremental",
-        "parameters": {
-          "location": {
-            "value": "[parameters('location')]"
-          },
-          "dataSetUri": {
-            "value": "[variables('dataSetUri')]"
-          },
-          "dataCollectionRuleImmutableId": {
-            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'dataCollectionDeployment'), '2022-09-01').outputs.dataCollectionRuleImmutableId.value]"
-          },
-          "dataCollectionEndpointURI": {
-            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'dataCollectionDeployment'), '2022-09-01').outputs.dataCollectionEndpointURI.value]"
-          },
-          "dataSetIngestionScriptUri": {
-            "value": "[variables('dataSetIngestionScriptUri')]"
-          },
-          "applicationId": {
-            "value": "[parameters('applicationId')]"
-          },
-          "applicationSecret": {
-            "value": "[parameters('applicationSecret')]"
-          },
-          "tenantId": {
-            "value": "[parameters('tenantId')]"
-          }
-        },
-        "template": {
-          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
-          "contentVersion": "1.0.0.0",
-          "metadata": {
-            "_generator": {
-              "name": "bicep",
-              "version": "0.17.1.54307",
-              "templateHash": "10365724685836605557"
-            }
-          },
-          "parameters": {
-            "location": {
-              "type": "string"
-            },
-            "dataSetUri": {
-              "type": "string"
-            },
-            "dataCollectionRuleImmutableId": {
-              "type": "string"
-            },
-            "dataCollectionEndpointURI": {
-              "type": "string"
-            },
-            "dataSetIngestionScriptUri": {
-              "type": "string"
-            },
-            "forceUpdateTag": {
-              "type": "string",
-              "defaultValue": "[utcNow()]"
-            },
-            "applicationId": {
-              "type": "string"
-            },
-            "tenantId": {
-              "type": "string"
-            },
-            "applicationSecret": {
-              "type": "securestring"
-            }
-          },
-          "variables": {
-            "scriptName": "deployAPT29Logs",
-            "scriptArguements": "[format('-appId \"{0}\" -TenantId \"{1}\" -DataSetUri \"{2}\" -DcrImmutableId \"{3} -DceURI \"{4}', parameters('applicationId'), parameters('tenantId'), parameters('dataSetUri'), parameters('dataCollectionRuleImmutableId'), parameters('dataCollectionEndpointURI'))]"
-          },
-          "resources": [
-            {
-              "type": "Microsoft.Resources/deploymentScripts",
-              "apiVersion": "2020-10-01",
-              "name": "[variables('scriptName')]",
-              "location": "[parameters('location')]",
-              "kind": "AzurePowerShell",
-              "properties": {
-                "azPowerShellVersion": "5.0",
-                "primaryScriptUri": "[parameters('dataSetIngestionScriptUri')]",
-                "arguments": "[variables('scriptArguements')]",
-                "cleanupPreference": "OnSuccess",
-                "retentionInterval": "P1D",
-                "timeout": "PT6H",
-                "forceUpdateTag": "[parameters('forceUpdateTag')]",
-                "environmentVariables": [
-                  {
-                    "name": "appSecret",
-                    "secureValue": "[parameters('applicationSecret')]"
-                  }
-                ]
-              }
-            }
-          ]
-        }
-      },
-      "dependsOn": [
-        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'dataCollectionDeployment')]"
-      ]
     }
-  ]
+  ],
+  "outputs": {
+    "dataCollectionRuleImmutableId": {
+      "type": "string",
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'dataCollectionDeployment'), '2022-09-01').outputs.dataCollectionRuleImmutableId.value]"
+    },
+    "dataCollectionEndpointUri": {
+      "type": "string",
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'dataCollectionDeployment'), '2022-09-01').outputs.dataCollectionEndpointURI.value]"
+    }
+  }
 }
