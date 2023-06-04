@@ -1,0 +1,483 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.17.1.54307",
+      "templateHash": "10788463432867215504"
+    }
+  },
+  "parameters": {
+    "resourceGroupName": {
+      "type": "string",
+      "defaultValue": "rg-sent-adv-hunting"
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "uksouth"
+    },
+    "sentinelWorkspaceName": {
+      "type": "string",
+      "defaultValue": "sent-adv-hunting"
+    },
+    "dataCollectionEndpointName": {
+      "type": "string",
+      "defaultValue": "sent-adv-hunting-dce"
+    },
+    "dataCollectionRuleName": {
+      "type": "string",
+      "defaultValue": "sent-adv-hunting-dcr"
+    },
+    "applicationId": {
+      "type": "string"
+    },
+    "tenantId": {
+      "type": "string"
+    },
+    "applicationSecret": {
+      "type": "securestring"
+    },
+    "applicationEnterpriseObjectId": {
+      "type": "string",
+      "metadata": {
+        "description": "This is the Object id of the Entperpise Application associated with the App Registration"
+      }
+    },
+    "ingestAPT29Logs": {
+      "type": "bool",
+      "defaultValue": true
+    }
+  },
+  "variables": {
+    "dataSetUri": "https://raw.githubusercontent.com/OTRF/detection-hackathon-apt29/master/datasets/day1/apt29_evals_day1_manual.zip",
+    "dataSetIngestionScriptUri": "https://raw.githubusercontent.com/TheAlistairRoss/Hunting-KQLAdv/main/Scripts/IngestAPT29DataToDataCollectionEndpoint.ps1"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2022-09-01",
+      "name": "resourceGroupDeployment",
+      "location": "[deployment().location]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "resourceGroupName": {
+            "value": "[parameters('resourceGroupName')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.17.1.54307",
+              "templateHash": "16059444393381550333"
+            }
+          },
+          "parameters": {
+            "resourceGroupName": {
+              "type": "string"
+            },
+            "location": {
+              "type": "string"
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Resources/resourceGroups",
+              "apiVersion": "2022-09-01",
+              "name": "[parameters('resourceGroupName')]",
+              "location": "[parameters('location')]"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2022-09-01",
+      "name": "sentinelWorkspaceDeployment",
+      "resourceGroup": "[parameters('resourceGroupName')]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "sentinelWorkspaceName": {
+            "value": "[parameters('sentinelWorkspaceName')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.17.1.54307",
+              "templateHash": "10307544376457091126"
+            }
+          },
+          "parameters": {
+            "sentinelWorkspaceName": {
+              "type": "string"
+            },
+            "location": {
+              "type": "string",
+              "defaultValue": "[resourceGroup().location]"
+            }
+          },
+          "variables": {
+            "sentinelSolutionName": "[format('SecurityInsights({0})', parameters('sentinelWorkspaceName'))]"
+          },
+          "resources": [
+            {
+              "type": "Microsoft.OperationalInsights/workspaces",
+              "apiVersion": "2022-10-01",
+              "name": "[parameters('sentinelWorkspaceName')]",
+              "location": "[parameters('location')]"
+            },
+            {
+              "type": "Microsoft.OperationsManagement/solutions",
+              "apiVersion": "2015-11-01-preview",
+              "name": "[variables('sentinelSolutionName')]",
+              "location": "[parameters('location')]",
+              "plan": {
+                "name": "[variables('sentinelSolutionName')]",
+                "publisher": "Microsoft",
+                "promotionCode": "",
+                "product": "OMSGallery/SecurityInsights"
+              },
+              "properties": {
+                "workspaceResourceId": "[resourceId('Microsoft.OperationalInsights/workspaces', parameters('sentinelWorkspaceName'))]"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.OperationalInsights/workspaces', parameters('sentinelWorkspaceName'))]"
+              ]
+            }
+          ]
+        }
+      },
+      "dependsOn": [
+        "[subscriptionResourceId('Microsoft.Resources/deployments', 'resourceGroupDeployment')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2022-09-01",
+      "name": "dataCollectionDeployment",
+      "resourceGroup": "[parameters('resourceGroupName')]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "workspaceName": {
+            "value": "[parameters('sentinelWorkspaceName')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "dataCollectionEndpointName": {
+            "value": "[parameters('dataCollectionEndpointName')]"
+          },
+          "dataCollectionRuleName": {
+            "value": "[parameters('dataCollectionRuleName')]"
+          },
+          "applicationObjectId": {
+            "value": "[parameters('applicationEnterpriseObjectId')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.17.1.54307",
+              "templateHash": "3874998160932447697"
+            }
+          },
+          "parameters": {
+            "workspaceName": {
+              "type": "string"
+            },
+            "location": {
+              "type": "string"
+            },
+            "dataCollectionEndpointName": {
+              "type": "string"
+            },
+            "dataCollectionRuleName": {
+              "type": "string"
+            },
+            "applicationObjectId": {
+              "type": "string"
+            }
+          },
+          "variables": {
+            "monitoringMetricsPublisherRoleId": "[resourceId('microsoft.authorization/roleDefinitions', '3913510d-42f4-4e42-8a64-420c390055eb')]",
+            "roleAssignmentName": "[guid(parameters('applicationObjectId'), variables('monitoringMetricsPublisherRoleId'), resourceGroup().name)]"
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Insights/dataCollectionEndpoints",
+              "apiVersion": "2021-09-01-preview",
+              "name": "[parameters('dataCollectionEndpointName')]",
+              "location": "[parameters('location')]",
+              "properties": {
+                "networkAcls": {
+                  "publicNetworkAccess": "Enabled"
+                }
+              }
+            },
+            {
+              "type": "Microsoft.Insights/dataCollectionRules",
+              "apiVersion": "2021-09-01-preview",
+              "name": "[parameters('dataCollectionRuleName')]",
+              "location": "[parameters('location')]",
+              "properties": {
+                "dataCollectionEndpointId": "[resourceId('Microsoft.Insights/dataCollectionEndpoints', parameters('dataCollectionEndpointName'))]",
+                "dataFlows": [
+                  {
+                    "streams": [
+                      "Custom-WindowsEvent"
+                    ],
+                    "destinations": [
+                      "[parameters('workspaceName')]"
+                    ],
+                    "transformKql": "source | extend EventData = parse_json(RawEventData) | extend Channel=tostring(EventData.Channel),Computer=tostring(EventData.Hostname),EventID=toint(EventData.EventID),EventLevel=toint(EventData.Level),Provider=tostring(EventData.SourceName),Task=toint(EventData.Task),Type='WindowsEvent'| project TimeGenerated,Channel,Computer,EventData,EventID,EventLevel,Provider,Task,Type",
+                    "outputStream": "Microsoft-WindowsEvent"
+                  }
+                ],
+                "description": "string",
+                "destinations": {
+                  "logAnalytics": [
+                    {
+                      "workspaceResourceId": "[resourceId('Microsoft.OperationalInsights/workspaces', parameters('workspaceName'))]",
+                      "name": "[parameters('workspaceName')]"
+                    }
+                  ]
+                },
+                "streamDeclarations": {
+                  "Custom-WindowsEvent": {
+                    "columns": [
+                      {
+                        "name": "TimeGenerated",
+                        "type": "datetime"
+                      },
+                      {
+                        "name": "RawEventData",
+                        "type": "string"
+                      }
+                    ]
+                  }
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Insights/dataCollectionEndpoints', parameters('dataCollectionEndpointName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2020-04-01-preview",
+              "name": "[variables('roleAssignmentName')]",
+              "properties": {
+                "roleDefinitionId": "[variables('monitoringMetricsPublisherRoleId')]",
+                "principalId": "[parameters('applicationObjectId')]",
+                "principalType": "ServicePrincipal"
+              }
+            }
+          ],
+          "outputs": {
+            "dataCollectionRuleImmutableId": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.Insights/dataCollectionRules', parameters('dataCollectionRuleName')), '2021-09-01-preview').immutableId]"
+            },
+            "dataCollectionEndpointURI": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.Insights/dataCollectionEndpoints', parameters('dataCollectionEndpointName')), '2021-09-01-preview').logsIngestion.endpoint]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'sentinelWorkspaceDeployment')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2022-09-01",
+      "name": "sentinelContentDeployment",
+      "resourceGroup": "[parameters('resourceGroupName')]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "workspaceName": {
+            "value": "[parameters('sentinelWorkspaceName')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.17.1.54307",
+              "templateHash": "15083034836056653479"
+            }
+          },
+          "parameters": {
+            "workspaceName": {
+              "type": "string"
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.OperationalInsights/workspaces/savedSearches",
+              "apiVersion": "2020-08-01",
+              "name": "[format('{0}/{1}', parameters('workspaceName'), 'fWindowsEvent')]",
+              "properties": {
+                "etag": "*",
+                "category": "SentAdvHunting",
+                "displayName": "fWindowsEvent",
+                "version": 2,
+                "functionAlias": "fWindowsEvent",
+                "query": "WindowsEvent | extend _timestamp_ = todatetime(EventData.['@timestamp']) | project-rename TimeIngested = TimeGenerated, TimeGenerated = _timestamp_"
+              }
+            }
+          ]
+        }
+      },
+      "dependsOn": [
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'dataCollectionDeployment')]"
+      ]
+    },
+    {
+      "condition": "[equals(parameters('ingestAPT29Logs'), true())]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2022-09-01",
+      "name": "ingestAPT29Logs",
+      "resourceGroup": "[parameters('resourceGroupName')]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "dataSetUri": {
+            "value": "[variables('dataSetUri')]"
+          },
+          "dataCollectionRuleImmutableId": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'dataCollectionDeployment'), '2022-09-01').outputs.dataCollectionRuleImmutableId.value]"
+          },
+          "dataCollectionEndpointURI": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'dataCollectionDeployment'), '2022-09-01').outputs.dataCollectionEndpointURI.value]"
+          },
+          "dataSetIngestionScriptUri": {
+            "value": "[variables('dataSetIngestionScriptUri')]"
+          },
+          "applicationId": {
+            "value": "[parameters('applicationId')]"
+          },
+          "applicationSecret": {
+            "value": "[parameters('applicationSecret')]"
+          },
+          "tenantId": {
+            "value": "[parameters('tenantId')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.17.1.54307",
+              "templateHash": "10365724685836605557"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string"
+            },
+            "dataSetUri": {
+              "type": "string"
+            },
+            "dataCollectionRuleImmutableId": {
+              "type": "string"
+            },
+            "dataCollectionEndpointURI": {
+              "type": "string"
+            },
+            "dataSetIngestionScriptUri": {
+              "type": "string"
+            },
+            "forceUpdateTag": {
+              "type": "string",
+              "defaultValue": "[utcNow()]"
+            },
+            "applicationId": {
+              "type": "string"
+            },
+            "tenantId": {
+              "type": "string"
+            },
+            "applicationSecret": {
+              "type": "securestring"
+            }
+          },
+          "variables": {
+            "scriptName": "deployAPT29Logs",
+            "scriptArguements": "[format('-appId \"{0}\" -TenantId \"{1}\" -DataSetUri \"{2}\" -DcrImmutableId \"{3} -DceURI \"{4}', parameters('applicationId'), parameters('tenantId'), parameters('dataSetUri'), parameters('dataCollectionRuleImmutableId'), parameters('dataCollectionEndpointURI'))]"
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Resources/deploymentScripts",
+              "apiVersion": "2020-10-01",
+              "name": "[variables('scriptName')]",
+              "location": "[parameters('location')]",
+              "kind": "AzurePowerShell",
+              "properties": {
+                "azPowerShellVersion": "5.0",
+                "primaryScriptUri": "[parameters('dataSetIngestionScriptUri')]",
+                "arguments": "[variables('scriptArguements')]",
+                "cleanupPreference": "OnSuccess",
+                "retentionInterval": "P1D",
+                "timeout": "PT6H",
+                "forceUpdateTag": "[parameters('forceUpdateTag')]",
+                "environmentVariables": [
+                  {
+                    "name": "appSecret",
+                    "secureValue": "[parameters('applicationSecret')]"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "dependsOn": [
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'dataCollectionDeployment')]"
+      ]
+    }
+  ]
+}
