@@ -1,13 +1,26 @@
 param (
-    #[Parameter(Mandatory = $true)]
+    [Parameter(Mandatory = $true)]
+    [string]$appId,
+
+    [securestring]$appSecret,
+
+    [Parameter(Mandatory = $true)]
+    [string]$TenantId,
+
+    [Parameter(Mandatory = $true)]
     [string]$DataSetUri,
 
-    #[Parameter(Mandatory = $true)]
+    [Parameter(Mandatory = $true)]
     [string]$DcrImmutableId,
 
-    #[Parameter(Mandatory = $true)]
-    [string]$DceURI 
-    )
+    [Parameter(Mandatory = $true)]
+    [string]$DceURI,
+
+    [Parameter(Mandatory = $false)]
+    [switch]$ShowProgressBar
+)
+
+
 
 function Send-AzMonitorCustomLogs {
     <#
@@ -21,7 +34,17 @@ function Send-AzMonitorCustomLogs {
     
     .PARAMETER LogPath
     Path to the log file or folder to read logs from and send them to Azure Monitor.
-       
+    
+    .PARAMETER appId
+    Azure Active Directory application to authenticate against the API to send logs to Azure Monitor data collection endpoint.
+    This script supports the Client Credential Grant Flow.
+
+    .PARAMETER appSecret
+    Secret text to use with the Azure Active Directory application to authenticate against the API for the Client Credential Grant Flow.
+
+    .PARAMETER TenantId
+    ID of Tenant
+    
     .PARAMETER DcrImmutableId
     Immutable ID of the data collection rule used to process events flowing to an Azure Monitor data table.
     
@@ -67,7 +90,16 @@ function Send-AzMonitorCustomLogs {
                 return $true
             })]
         [string[]]$LogPath,
-    
+
+        [Parameter(Mandatory = $true)]
+        [string]$appId,
+
+        [Parameter(Mandatory = $true)]
+        [string]$applicationSecret,
+
+        [Parameter(Mandatory = $true)]
+        [string]$TenantId,
+
         [Parameter(Mandatory = $true)]
         [string]$DcrImmutableId,
 
@@ -102,17 +134,15 @@ function Send-AzMonitorCustomLogs {
         }
     }
 
-    # write-Host "*******************************************"
-    # Write-Host "[+] Obtaining access token.."
-    # ## Obtain a bearer token used to authenticate against the data collection endpoint
-    # $scope = [System.Web.HttpUtility]::UrlEncode("https://monitor.azure.com//.default")   
-    # $body = "client_id=$appId&scope=$scope&client_secret=$appSecret&grant_type=client_credentials";
-    # $headers = @{"Content-Type" = "application/x-www-form-urlencoded" };
-    # $uri = "https://login.microsoftonline.com/$tenantId/oauth2/v2.0/token"
-    # $bearerToken = (Invoke-RestMethod -Uri $uri -Method "Post" -Body $body -Headers $headers).access_token
-    # Write-Debug $bearerToken 
-    Connect-AzAccount -Identity
-    $bearerToken = (Get-AzAccessToken).Token
+    write-Host "*******************************************"
+    Write-Host "[+] Obtaining access token.."
+    ## Obtain a bearer token used to authenticate against the data collection endpoint
+    $scope = [System.Web.HttpUtility]::UrlEncode("https://monitor.azure.com//.default")   
+    $body = "client_id=$appId&scope=$scope&client_secret=$applicationSecret&grant_type=client_credentials";
+    $headers = @{"Content-Type" = "application/x-www-form-urlencoded" };
+    $uri = "https://login.microsoftonline.com/$tenantId/oauth2/v2.0/token"
+    $bearerToken = (Invoke-RestMethod -Uri $uri -Method "Post" -Body $body -Headers $headers).access_token
+    Write-Debug $bearerToken
 
     Function Send-DataToDCE($payload, $size) {
         write-debug "############ Sending Data ############"
@@ -132,7 +162,7 @@ function Send-AzMonitorCustomLogs {
 
     # Maximum size of API call: 1MB for both compressed and uncompressed data
     $APILimitBytes = 1mb
-    $target_event_limit=40
+    $target_event_limit = 40
     $currentTime = Get-Date
 
     foreach ($dataset in $all_datasets) {
@@ -142,7 +172,7 @@ function Send-AzMonitorCustomLogs {
         $event_count = 0
         $temp_event_count = 0
         $total_size = 0
-    
+ 
         # Create ReadLines Iterator and get total number of lines
         $readLineIterator = [System.IO.File]::ReadLines($dataset)
         $numberOfLines = [Linq.Enumerable]::Count($readLineIterator)
@@ -157,14 +187,17 @@ function Send-AzMonitorCustomLogs {
         # Read each JSON object from file
         foreach ($line in $readLineIterator) {
             
-             if ($currentTime.AddMinutes(50) -lt (Get-Date)) {
+            if ($currentTime.AddMinutes(50) -lt (Get-Date)) {
                 ## Obtain a bearer token used to authenticate against the data collection endpoint
                 Write-Host "[+] The bearer token is close to be expired. It's time to renew the token... " -NoNewline
-                Connect-AzAccount -Identity
-                $bearerToken = (Get-AzAccessToken).Token          
+                $scope = [System.Web.HttpUtility]::UrlEncode("https://monitor.azure.com//.default")   
+                $body = "client_id=$appId&scope=$scope&client_secret=$applicationSecret&grant_type=client_credentials";
+                $headers = @{"Content-Type" = "application/x-www-form-urlencoded" };
+                $uri = "https://login.microsoftonline.com/$tenantId/oauth2/v2.0/token"
+                $bearerToken = (Invoke-RestMethod -Uri $uri -Method "Post" -Body $body -Headers $headers).access_token
                 $currentTime = Get-Date
                 Write-Host "Completed" -ForegroundColor White -BackgroundColor Green
-             }
+            }
 
             # Increase event number
             $event_count += 1
@@ -212,13 +245,13 @@ function Send-AzMonitorCustomLogs {
 
                 # There are more events to process..
                 write-debug "######## Resetting JSON Array ########"
-                $temp_event_count=1
+                $temp_event_count = 1
                 $json_records = @($message)
 
                 #$json_array_current_size = ([System.Text.Encoding]::UTF8.GetBytes(@($json_records | Convertfrom-json | ConvertTo-Json))).Length
                 #Write-Debug "Starting JSON array with size: $json_array_current_size bytes"
             }
-            
+           
             if ($event_count -eq $numberOfLines) {
                 write-debug "##### Last log entry in $dataset #######"
                 Send-DataToDCE -payload $json_records -size $json_array_current_size
@@ -232,17 +265,77 @@ function Send-AzMonitorCustomLogs {
     }
 }
 
+
+function Load-Module ($m) {
+
+    # If module is imported - do nothing
+    if (Get-Module | Where-Object { $_.Name -eq $m }) {
+        write-host "[+] Module $m is already imported. " -NoNewline
+        write-host "Completed" -ForegroundColor White -BackgroundColor Green
+    }
+    else {
+
+        # If module is not imported, but available on disk then import
+        if (Get-Module -ListAvailable | Where-Object { $_.Name -eq $m }) {
+            write-host "[+] $m is available, loading... " -NoNewline
+            Import-Module $m 
+            write-host "Completed" -ForegroundColor White -BackgroundColor Green
+        }
+        else {
+
+            # If module is not imported, not available on disk, but is in online gallery then install and import
+            if (Find-Module -Name $m | Where-Object { $_.Name -eq $m }) {
+                write-host "[+] $m is not available, installing... " -NoNewline
+                Install-Module -Name $m -Force -Verbose -Scope CurrentUser
+                write-host "Completed" -ForegroundColor White -BackgroundColor Green
+                write-host "[+] $m is now available, loading... " -NoNewline
+                Import-Module $m 
+                write-host "Completed" -ForegroundColor White -BackgroundColor Green
+            }
+            else {
+
+                # If the module is not imported, not available and not in the online gallery then abort
+                write-host "[!!!] Module $m not imported, not available and not in an online gallery, exiting." -BackgroundColor Red -ForegroundColor White
+                EXIT 1
+            }
+        }
+    }
+}
+
+#Push-Location (Split-Path $MyInvocation.MyCommand.Path)
+
+Load-Module Az.Accounts
+
+Add-Type -AssemblyName System.Web
+
+
+if (!$appSecret) {
+    try {
+        $appSecret = $env:appSecret
+        Write-Host "Getting App Secret from Environment Variables"
+    }
+    catch {
+        Write-Host "Failed to get app secret"
+        exit
+    }
+}
+else {
+    Write-Host "App Secret Found as Parameter"
+}
+
+$applicationSecret = $appSecret | ConvertFrom-SecureString -AsPlainText 
+Write-Host "App Secret = $applicationSecret"
+
+
+
 $StreamName = 'Custom-WindowsEvent_CL'
 $original_file = '.\orig\apt29_evals_day1_manual_2020-05-01225525.json'
 $destination_file = '.\apt29.json'
 
-$day1date = "2020-05-01"
-$day2date = "2020-05-02"    
-
 # Download the data set (approx 370 MB)
 $DataSetFileName = $DataSetUri.Split("/")[-1]
 
-try{
+try {
     Write-Host "[+] Downloading DataSet"
     Invoke-WebRequest -Uri $DataSetUri -OutFile $DataSetFileName 
     $DataSetDirectory = "orig"
@@ -255,8 +348,6 @@ catch {
     Exit
 }
 
-#Connect-AzAccount 
-#Connect-AzAccount -Identity
 
 # replace 2 days from apt logs
 
@@ -281,11 +372,14 @@ else {
 
 
 $SendAzMonitorCustomLogsParams = @{
-    LogPath =  $destination_file
-    DcrImmutableId =  $dcrImmutableId 
-    DceURI = $dceLogIngestionEndpoint 
-    StreamName = 'Custom-WindowsEvent' 
+    LogPath        = $destination_file
+    appId          = $appId
+    applicationSecret      = $applicationSecret 
+    tenantId       = $TenantId
+    DcrImmutableId = $DcrImmutableId 
+    DceURI         = $DceURI 
+    StreamName     = 'Custom-WindowsEvent' 
     TimestampField = 'EventTime' 
 }
 
-Send-AzMonitorCustomLogs @SendAzMonitorCustomLogsParams
+Send-AzMonitorCustomLogs @SendAzMonitorCustomLogsParams -ShowProgressBar

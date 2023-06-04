@@ -3,10 +3,10 @@ param location string
 
 param dataCollectionEndpointName string
 param dataCollectionRuleName string
-param managedIdentityName string
 
+param applicationObjectId string
 var monitoringMetricsPublisherRoleId = resourceId('microsoft.authorization/roleDefinitions', '3913510d-42f4-4e42-8a64-420c390055eb')
-var roleAssignmentName = guid(managedIdentity.name, monitoringMetricsPublisherRoleId, resourceGroup().id)
+var roleAssignmentName = guid(applicationObjectId, monitoringMetricsPublisherRoleId, resourceGroup().name)
 
 
 resource logAnalyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2022-10-01' existing = {
@@ -68,17 +68,12 @@ resource dataCollectionRule 'Microsoft.Insights/dataCollectionRules@2021-09-01-p
   }
 }
 
-resource managedIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2022-01-31-preview' = {
-  name: managedIdentityName
-  location: location
-}
-
 resource roleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = {
-  scope: dataCollectionEndpoint
+  scope: resourceGroup()
   name: roleAssignmentName
   properties: {
     roleDefinitionId: monitoringMetricsPublisherRoleId
-    principalId: managedIdentity.properties.principalId
+    principalId: applicationObjectId
     principalType: 'ServicePrincipal'
   }
 }
