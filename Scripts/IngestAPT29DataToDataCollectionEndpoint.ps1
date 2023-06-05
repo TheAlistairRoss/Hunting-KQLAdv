@@ -272,8 +272,6 @@ function Send-AzMonitorCustomLogs {
 
 Add-Type -AssemblyName System.Web
 
-Write-host "Application Secret starts with '$($appSecret.Substring(0,4))...'"
-
 $StreamName = 'Custom-WindowsEvent_CL'
 $original_file = '.\orig\apt29_evals_day1_manual_2020-05-01225525.json'
 $destination_file = '.\apt29.json'

@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.17.1.54307",
-      "templateHash": "6757419128615382021"
+      "templateHash": "12003838390905408961"
     }
   },
   "parameters": {
@@ -190,7 +190,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.17.1.54307",
-              "templateHash": "3874998160932447697"
+              "templateHash": "17968418477416927218"
             }
           },
           "parameters": {
@@ -212,7 +212,7 @@
           },
           "variables": {
             "monitoringMetricsPublisherRoleId": "[resourceId('microsoft.authorization/roleDefinitions', '3913510d-42f4-4e42-8a64-420c390055eb')]",
-            "roleAssignmentName": "[guid(parameters('applicationObjectId'), variables('monitoringMetricsPublisherRoleId'), resourceGroup().name)]"
+            "roleAssignmentName": "[guid(parameters('applicationObjectId'), variables('monitoringMetricsPublisherRoleId'), resourceGroup().name, parameters('dataCollectionEndpointName'))]"
           },
           "resources": [
             {

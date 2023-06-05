@@ -6,7 +6,7 @@ param dataCollectionRuleName string
 
 param applicationObjectId string
 var monitoringMetricsPublisherRoleId = resourceId('microsoft.authorization/roleDefinitions', '3913510d-42f4-4e42-8a64-420c390055eb')
-var roleAssignmentName = guid(applicationObjectId, monitoringMetricsPublisherRoleId, resourceGroup().name)
+var roleAssignmentName = guid(applicationObjectId, monitoringMetricsPublisherRoleId, resourceGroup().name, dataCollectionEndpointName)
 
 
 resource logAnalyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2022-10-01' existing = {
