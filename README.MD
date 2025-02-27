@@ -20,7 +20,7 @@
 
 ```azurepowershell
 $IngestAPT29DataToDataCollectionEndpointParams = @{
-    DataSetUri = "https://raw.githubusercontent.com/OTRF/detection-hackathon-apt29/master/datasets/day1/apt29_evals_day1_manual.zip"
+    DataSetUri = "https://github.com/OTRF/detection-hackathon-apt29/raw/refs/heads/master/datasets/day1/apt29_evals_day1_manual.zip"
     DceURI = ""
     DcrImmutableId = ""
     appId = ""
@@ -28,11 +28,11 @@ $IngestAPT29DataToDataCollectionEndpointParams = @{
     appSecret = ""
 }
 
-$scriptUri = "https://raw.githubusercontent.com/TheAlistairRoss/Hunting-KQLAdv/main/Scripts/IngestAPT29DataToDataCollectionEndpoint.ps1"
+$scriptUri = "https://github.com/TheAlistairRoss/Hunting-KQLAdv/raw/refs/heads/main/Scripts/IngestAPT29DataToDataCollectionEndpoint.ps1"
 $scriptName = "IngestAPT29DataToDataCollectionEndpoint.ps1"
 Invoke-RestMethod -Uri $scriptUri | Out-File $scriptName
 
 .\IngestAPT29DataToDataCollectionEndpoint.ps1 @IngestAPT29DataToDataCollectionEndpointParams -ShowProgressBar
 ```
 
-5. The script should run automatically. It will take apporximatly an hour.
+5. The script should run automatically. It will take approximately an hour.
